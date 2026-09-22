@@ -1,9 +1,16 @@
+const crypto = require("crypto");
 const Customer = require("../models/Customer");
 const Order = require("../models/Order");
+const Call = require("../models/Call");
+const Conversation = require("../models/Conversation");
+const AppError = require("../utils/AppError");
+const asyncHandler = require("../utils/asyncHandler");
+const { callStatuses } = require("../middleware/validate");
+const makeCallId = () => `CALL-${crypto.randomUUID()}`;
+const makeConversationId = () => `CONV-${crypto.randomUUID()}`;
 
 // Complete incoming call flow
-const handleIncomingCall = async (req, res) => {
-  try {
+const handleIncomingCall = asyncHandler(async (req, res) => {
     const {
       phone,
       name,
@@ -15,14 +22,14 @@ const handleIncomingCall = async (req, res) => {
 
     // Phone number is required
     if (!phone) {
-      return res.status(400).json({
-        success: false,
-        message: "Phone number is required",
-      });
+      throw new AppError("Phone number is required", 400);
     }
 
     // Find customer by phone number
     let customer = await Customer.findOne({ phone });
+    const isExistingCustomer = Boolean(customer);
+    const call = await Call.create({ callId: req.body.callId || makeCallId(), phone, customerId: customer?._id });
+    const conversation = await Conversation.create({ conversationId: makeConversationId(), callId: call.callId, customerId: customer?._id });
 
     // ==========================================
     // NEW CUSTOMER
@@ -35,29 +42,28 @@ const handleIncomingCall = async (req, res) => {
           isExistingCustomer: false,
           message: "New customer",
           nextStep: "Collect customer details and order",
-          phone,
+          phone, callId: call.callId, conversationId: conversation.conversationId,
         });
       }
 
       // Create customer
-      customer = await Customer.create({
-        name,
-        phone,
-        address,
-        email,
-        totalOrders: 1,
-        lastOrderDate: new Date(),
-      });
+      let createdCustomer = true;
+      try { customer = await Customer.create({ name, phone, address, email, totalOrders: 1, lastOrderDate: new Date() }); }
+      catch (error) { if (error.code !== 11000) throw error; createdCustomer = false; customer = await Customer.findOne({ phone }); }
+      call.customerId = customer._id;
+      conversation.customerId = customer._id;
+      await Promise.all([call.save(), conversation.save()]);
 
       // Create first order
       const order = await Order.create({
         customer: customer._id,
         items,
-        amount,
+        amount, callId: call.callId,
       });
+      if (!createdCustomer) await Customer.updateOne({ _id: customer._id }, { $inc: { totalOrders: 1 }, $set: { lastOrderDate: new Date() } });
 
       return res.status(201).json({
-        success: true,
+        success: true, callId: call.callId, conversationId: conversation.conversationId, customerId: customer._id,
         isExistingCustomer: false,
         message: "New customer and first order created successfully",
 
@@ -86,7 +92,7 @@ const handleIncomingCall = async (req, res) => {
     // If order information is not provided
     if (!items || amount === undefined) {
       return res.status(200).json({
-        success: true,
+          success: true, callId: call.callId, conversationId: conversation.conversationId, customerId: customer._id,
         isExistingCustomer: true,
         message: "Existing customer recognized",
         nextStep: "Collect new order",
@@ -109,7 +115,7 @@ const handleIncomingCall = async (req, res) => {
     const order = await Order.create({
       customer: customer._id,
       items,
-      amount,
+      amount, callId: call.callId,
     });
 
     // Update customer information
@@ -119,7 +125,7 @@ const handleIncomingCall = async (req, res) => {
     await customer.save();
 
     return res.status(201).json({
-      success: true,
+      success: true, callId: call.callId, conversationId: conversation.conversationId, customerId: customer._id,
       isExistingCustomer: true,
       message: "New order created for existing customer",
 
@@ -137,17 +143,18 @@ const handleIncomingCall = async (req, res) => {
 
       previousOrderCount: previousOrders.length,
     });
-  } catch (error) {
-    console.error("Incoming call error:", error);
+});
 
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
-  }
-};
+const listCalls = asyncHandler(async (req, res) => { const calls = await Call.find().populate("customerId", "name phone").sort({ createdAt: -1 }); res.json({ success: true, count: calls.length, calls }); });
+const getCall = asyncHandler(async (req, res) => { const call = await Call.findOne({ callId: req.params.callId }).populate("customerId", "name phone address email"); if (!call) throw new AppError("Call not found", 404); res.json({ success: true, call }); });
+const updateCallStatus = asyncHandler(async (req, res) => { const { status } = req.body; if (!callStatuses.includes(status)) throw new AppError("Invalid call status", 400); const call = await Call.findOneAndUpdate({ callId: req.params.callId }, { status }, { new: true }); if (!call) throw new AppError("Call not found", 404); res.json({ success: true, message: "Call status updated", call }); });
+const endCall = asyncHandler(async (req, res) => { const call = await Call.findOne({ callId: req.params.callId }); if (!call) throw new AppError("Call not found", 404); call.endTime = new Date(); call.duration = Math.max(0, Math.round((call.endTime - call.startTime) / 1000)); call.status = "completed"; await call.save(); await Conversation.updateOne({ callId: call.callId }, { status: "completed" }); res.json({ success: true, message: "Call ended", call }); });
 
 module.exports = {
   handleIncomingCall,
+  incoming: handleIncomingCall,
+  listCalls,
+  getCall,
+  updateCallStatus,
+  endCall,
 };

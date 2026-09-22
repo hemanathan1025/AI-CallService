@@ -41,7 +41,6 @@ const createCustomer = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message,
     });
   }
 };
@@ -84,7 +83,6 @@ const recognizeCustomer = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message,
     });
   }
 };
@@ -115,7 +113,6 @@ const getCustomerByPhone = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message,
     });
   }
 };
@@ -137,7 +134,6 @@ const getAllCustomers = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message,
     });
   }
 };
@@ -191,7 +187,6 @@ const registerNewCustomer = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message,
     });
   }
 };

@@ -8,6 +8,12 @@ const orderSchema = new mongoose.Schema(
       required: true,
     },
 
+    callId: {
+      type: String,
+      trim: true,
+      index: true,
+    },
+
     items: {
       type: String,
       required: true,

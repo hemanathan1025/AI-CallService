@@ -9,14 +9,15 @@ const {
 } = require("../controllers/customerController");
 
 const router = express.Router();
+const { validateCustomer, validatePhoneParam } = require("../middleware/validate");
 
-router.post("/", createCustomer);
+router.post("/", validateCustomer(), createCustomer);
 
-router.get("/phone/:phone", getCustomerByPhone);
+router.get("/phone/:phone", validatePhoneParam, getCustomerByPhone);
 
-router.get("/recognize/:phone", recognizeCustomer);
+router.get("/recognize/:phone", validatePhoneParam, recognizeCustomer);
 
-router.post("/register", registerNewCustomer);
+router.post("/register", validateCustomer({ addressRequired: true }), registerNewCustomer);
 
 router.get("/", getAllCustomers);
 

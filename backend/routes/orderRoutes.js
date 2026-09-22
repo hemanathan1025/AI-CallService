@@ -10,20 +10,21 @@ const {
 } = require("../controllers/orderController");
 
 const router = express.Router();
+const { requireOrderFields, validateOrder, validatePhoneParam, validateObjectId } = require("../middleware/validate");
 
 router.get("/", getAllOrders);
 
-router.post("/", createOrder);
+router.post("/", requireOrderFields, createOrder);
 
-router.get("/customer/:phone", getCustomerOrders);
+router.get("/customer/:phone", validatePhoneParam, getCustomerOrders);
 
 router.get(
   "/customer/:phone/details",
-  getCustomerDetailsWithOrders
+  validatePhoneParam, getCustomerDetailsWithOrders
 );
 
-router.post("/new-customer", createNewCustomerOrder);
+router.post("/new-customer", validateOrder, createNewCustomerOrder);
 
-router.put("/:id/status", updateOrderStatus);
+router.put("/:id/status", validateObjectId("id"), validateOrder, updateOrderStatus);
 
 module.exports = router;

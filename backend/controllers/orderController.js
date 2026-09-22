@@ -52,7 +52,6 @@ const createOrder = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message,
     });
   }
 };
@@ -93,7 +92,6 @@ const getCustomerOrders = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message,
     });
   }
 };
@@ -117,7 +115,6 @@ const getAllOrders = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message,
     });
   }
 };
@@ -162,7 +159,6 @@ const getCustomerDetailsWithOrders = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message,
     });
   }
 };
@@ -233,7 +229,6 @@ const createNewCustomerOrder = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message,
     });
   }
 };
@@ -291,7 +286,6 @@ const updateOrderStatus = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message,
     });
   }
 };

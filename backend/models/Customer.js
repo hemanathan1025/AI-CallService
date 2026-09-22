@@ -13,6 +13,7 @@ const customerSchema = new mongoose.Schema(
       required: true,
       unique: true,
       trim: true,
+      index: true,
     },
 
     address: {
@@ -23,6 +24,7 @@ const customerSchema = new mongoose.Schema(
     email: {
       type: String,
       trim: true,
+      lowercase: true,
     },
 
     totalOrders: {
