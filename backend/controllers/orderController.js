@@ -1,10 +1,12 @@
 const Order = require("../models/Order");
 const Customer = require("../models/Customer");
+const { normalizePhone } = require("../utils/phone");
 
 // Create a new order for an existing customer
-const createOrder = async (req, res) => {
+const createOrder = async (req, res, next) => {
   try {
     const { phone, items, amount } = req.body;
+    const normalizedPhone = normalizePhone(phone);
 
     if (!phone || !items || amount === undefined) {
       return res.status(400).json({
@@ -13,7 +15,7 @@ const createOrder = async (req, res) => {
       });
     }
 
-    const customer = await Customer.findOne({ phone });
+    const customer = await Customer.findOne({ phone: normalizedPhone });
 
     if (!customer) {
       return res.status(404).json({
@@ -47,22 +49,18 @@ const createOrder = async (req, res) => {
       order,
     });
   } catch (error) {
-    console.error("Create order error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    next(error);
   }
 };
 
 
 // Get orders of a customer
-const getCustomerOrders = async (req, res) => {
+const getCustomerOrders = async (req, res, next) => {
   try {
     const { phone } = req.params;
+    const normalizedPhone = normalizePhone(phone);
 
-    const customer = await Customer.findOne({ phone });
+    const customer = await Customer.findOne({ phone: normalizedPhone });
 
     if (!customer) {
       return res.status(404).json({
@@ -87,18 +85,13 @@ const getCustomerOrders = async (req, res) => {
       orders,
     });
   } catch (error) {
-    console.error("Get customer orders error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    next(error);
   }
 };
 
 
 // Get all orders
-const getAllOrders = async (req, res) => {
+const getAllOrders = async (req, res, next) => {
   try {
     const orders = await Order.find()
       .populate("customer")
@@ -110,22 +103,18 @@ const getAllOrders = async (req, res) => {
       orders,
     });
   } catch (error) {
-    console.error("Get all orders error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    next(error);
   }
 };
 
 
 // Get customer details with all previous orders
-const getCustomerDetailsWithOrders = async (req, res) => {
+const getCustomerDetailsWithOrders = async (req, res, next) => {
   try {
     const { phone } = req.params;
+    const normalizedPhone = normalizePhone(phone);
 
-    const customer = await Customer.findOne({ phone });
+    const customer = await Customer.findOne({ phone: normalizedPhone });
 
     if (!customer) {
       return res.status(404).json({
@@ -154,18 +143,13 @@ const getCustomerDetailsWithOrders = async (req, res) => {
       orders,
     });
   } catch (error) {
-    console.error("Get customer details error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    next(error);
   }
 };
 
 
 // Create a new customer and their first order
-const createNewCustomerOrder = async (req, res) => {
+const createNewCustomerOrder = async (req, res, next) => {
   try {
     const {
       name,
@@ -175,6 +159,7 @@ const createNewCustomerOrder = async (req, res) => {
       items,
       amount,
     } = req.body;
+    const normalizedPhone = normalizePhone(phone);
 
     if (!name || !phone || !items || amount === undefined) {
       return res.status(400).json({
@@ -183,7 +168,7 @@ const createNewCustomerOrder = async (req, res) => {
       });
     }
 
-    const existingCustomer = await Customer.findOne({ phone });
+    const existingCustomer = await Customer.findOne({ phone: normalizedPhone });
 
     if (existingCustomer) {
       return res.status(409).json({
@@ -196,7 +181,7 @@ const createNewCustomerOrder = async (req, res) => {
 
     const customer = await Customer.create({
       name,
-      phone,
+      phone: normalizedPhone,
       address,
       email,
       totalOrders: 1,
@@ -224,18 +209,13 @@ const createNewCustomerOrder = async (req, res) => {
       order,
     });
   } catch (error) {
-    console.error("Create new customer order error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    next(error);
   }
 };
 
 
 // Update order status
-const updateOrderStatus = async (req, res) => {
+const updateOrderStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -271,6 +251,16 @@ const updateOrderStatus = async (req, res) => {
       });
     }
 
+    if (
+      order.status !== status &&
+      ["completed", "cancelled"].includes(order.status)
+    ) {
+      return res.status(409).json({
+        success: false,
+        message: "Cannot change the status of a closed order",
+      });
+    }
+
     order.status = status;
 
     await order.save();
@@ -281,12 +271,7 @@ const updateOrderStatus = async (req, res) => {
       order,
     });
   } catch (error) {
-    console.error("Update order status error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    next(error);
   }
 };
 

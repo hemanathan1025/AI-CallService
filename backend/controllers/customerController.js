@@ -1,9 +1,11 @@
 const Customer = require("../models/Customer");
+const { normalizePhone } = require("../utils/phone");
 
 // Create a new customer
-const createCustomer = async (req, res) => {
+const createCustomer = async (req, res, next) => {
   try {
     const { name, phone, address, email } = req.body;
+    const normalizedPhone = normalizePhone(phone);
 
     if (!name || !phone) {
       return res.status(400).json({
@@ -13,7 +15,7 @@ const createCustomer = async (req, res) => {
     }
 
     // Check whether customer already exists
-    const existingCustomer = await Customer.findOne({ phone });
+    const existingCustomer = await Customer.findOne({ phone: normalizedPhone });
 
     if (existingCustomer) {
       return res.status(409).json({
@@ -25,7 +27,7 @@ const createCustomer = async (req, res) => {
 
     const customer = await Customer.create({
       name,
-      phone,
+      phone: normalizedPhone,
       address,
       email,
     });
@@ -36,20 +38,16 @@ const createCustomer = async (req, res) => {
       customer,
     });
   } catch (error) {
-    console.error("Create customer error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    next(error);
   }
 };
 
 
 // Recognize customer using phone number
-const recognizeCustomer = async (req, res) => {
+const recognizeCustomer = async (req, res, next) => {
   try {
     const { phone } = req.params;
+    const normalizedPhone = normalizePhone(phone);
 
     if (!phone) {
       return res.status(400).json({
@@ -58,7 +56,7 @@ const recognizeCustomer = async (req, res) => {
       });
     }
 
-    const customer = await Customer.findOne({ phone });
+    const customer = await Customer.findOne({ phone: normalizedPhone });
 
     // Customer does not exist
     if (!customer) {
@@ -78,22 +76,18 @@ const recognizeCustomer = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Recognize customer error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    next(error);
   }
 };
 
 
 // Find customer using phone number
-const getCustomerByPhone = async (req, res) => {
+const getCustomerByPhone = async (req, res, next) => {
   try {
     const { phone } = req.params;
+    const normalizedPhone = normalizePhone(phone);
 
-    const customer = await Customer.findOne({ phone });
+    const customer = await Customer.findOne({ phone: normalizedPhone });
 
     if (!customer) {
       return res.status(404).json({
@@ -108,18 +102,13 @@ const getCustomerByPhone = async (req, res) => {
       customer,
     });
   } catch (error) {
-    console.error("Find customer error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    next(error);
   }
 };
 
 
 // Get all customers
-const getAllCustomers = async (req, res) => {
+const getAllCustomers = async (req, res, next) => {
   try {
     const customers = await Customer.find().sort({ createdAt: -1 });
 
@@ -129,18 +118,13 @@ const getAllCustomers = async (req, res) => {
       customers,
     });
   } catch (error) {
-    console.error("Get customers error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    next(error);
   }
 };
 
 
 // Register a new customer from the call
-const registerNewCustomer = async (req, res) => {
+const registerNewCustomer = async (req, res, next) => {
   try {
     const {
       name,
@@ -148,6 +132,7 @@ const registerNewCustomer = async (req, res) => {
       address,
       email,
     } = req.body;
+    const normalizedPhone = normalizePhone(phone);
 
     if (!name || !phone || !address) {
       return res.status(400).json({
@@ -157,7 +142,7 @@ const registerNewCustomer = async (req, res) => {
     }
 
     // Check if customer already exists
-    const existingCustomer = await Customer.findOne({ phone });
+    const existingCustomer = await Customer.findOne({ phone: normalizedPhone });
 
     if (existingCustomer) {
       return res.status(409).json({
@@ -169,7 +154,7 @@ const registerNewCustomer = async (req, res) => {
 
     const customer = await Customer.create({
       name,
-      phone,
+      phone: normalizedPhone,
       address,
       email,
       totalOrders: 0,
@@ -182,12 +167,7 @@ const registerNewCustomer = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Register customer error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    next(error);
   }
 };
 

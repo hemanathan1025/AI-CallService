@@ -11,6 +11,11 @@ async function processConversation(payload) {
   try { response = await fetch(process.env.AI_SERVICE_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), signal: AbortSignal.timeout(Number(process.env.AI_SERVICE_TIMEOUT_MS || 10000)) }); }
   catch (error) { throw new AppError("AI service is unavailable", 503); }
   if (!response.ok) throw new AppError("AI service returned an error", 502);
-  return validateResult(await response.json());
+  try {
+    return validateResult(await response.json());
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    throw new AppError("AI service returned invalid JSON", 502);
+  }
 }
 module.exports = { processConversation };
